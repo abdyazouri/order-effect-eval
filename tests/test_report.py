@@ -1,4 +1,4 @@
-from order_effect_eval.report import per_model_summary
+from order_effect_eval.report import per_model_summary, reasoning_quality_notes
 
 
 def _rows(model, reasoning_judgments, judgment_judgments, ground_truth="reject"):
@@ -42,6 +42,21 @@ def test_flip_detected_and_case_ids_reported():
     assert flip["n_cases"] == 3
     assert abs(flip["ac1"] - (1 / 3)) < 1e-3  # report.py rounds to 3 decimals
     assert flip["flipped_case_ids"] == ["c1"]
+
+
+def test_reasoning_quality_notes_only_includes_annotated_rows():
+    rows = [
+        {"case_id": "c0", "case_text": "x", "ground_truth": "reject", "model": "m",
+         "condition": "reasoning_first", "judgment": "reject", "reasoning_quality": "flawed_but_coherent"},
+        {"case_id": "c1", "case_text": "y", "ground_truth": "reject", "model": "m",
+         "condition": "judgment_first", "judgment": "reject", "reasoning_quality": ""},
+        {"case_id": "c1", "case_text": "y", "ground_truth": "reject", "model": "m",
+         "condition": "judgment_first", "judgment": "reject"},  # key missing entirely
+    ]
+    notes = reasoning_quality_notes(rows)
+    assert len(notes) == 1
+    assert notes[0]["case_id"] == "c0"
+    assert notes[0]["reasoning_quality"] == "flawed_but_coherent"
 
 
 def test_two_models_kept_separate():

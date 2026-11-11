@@ -78,6 +78,30 @@ documented failure mode this project is built to detect is specifically expected
 is exactly what the synthetic validation above models (`is_ambiguous`), and exactly what this real
 pilot's case set did not include enough of.
 
+## A judgment can be correct for the wrong reason
+
+Agreement and flip rate both treat a judgment as one of two outcomes -- correct or not -- which
+misses something the pilot surfaced directly: on the Arabic-orthography case (`arabic_no_vowels`),
+`qwen2.5-7b` reached the *correct* judgment ("reject") under **both** orderings, but the reasoning
+behind it was not sound either time, and degraded differently depending on order:
+
+- **reasoning-first**: conflated *harakat* (short vowel diacritics -- fatha, damma, kasra) with
+  *huruf al-illah* (the actual vowel letters, alif/waw/ya') -- a real, identifiable grammatical
+  error, but at least pointing at genuine concepts.
+- **judgment-first**: invented grammatical terms and rules with no basis in Arabic grammar at all
+  (e.g. treating "fi'l," "ayn," and "hamza" as categories of vowel letter) -- not a recognizable
+  error anymore, closer to confabulation.
+
+This is logged in the report as a qualitative annotation (`reasoning_quality` column in
+`data/pilot_results.csv`: `sound` / `flawed_but_coherent` / `fabricated`), reviewed case by case,
+not aggregated into a rate -- **this is one case, reviewed in this much detail, not a finding**.
+But it reframes the original question usefully: maybe prompt order doesn't flip *judgments* much
+(which is what AC1 and flip rate measure), but it can still degrade the *reasoning quality behind*
+an unchanged judgment -- a real distinction the all-reject pilot above, read only as judgments,
+would have missed entirely. Systematically scoring `reasoning_quality` across every case and model,
+then testing whether flawed or fabricated reasoning predicts a *higher* flip rate on the harder,
+borderline cases below, is the natural next step.
+
 ## What's next
 
 - A second round of cases built specifically to be borderline -- a false premise embedded in an

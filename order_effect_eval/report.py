@@ -36,6 +36,27 @@ def _index(rows: list[dict]) -> dict:
     return by_model, ground_truth
 
 
+def reasoning_quality_notes(rows: list[dict]) -> list[dict]:
+    """Every row that has been manually annotated with a reasoning_quality
+    label (sound / flawed_but_coherent / fabricated), regardless of whether
+    the judgment itself was correct. This is a qualitative log, not a
+    statistic: with only a handful of cases reviewed this closely so far, it
+    is reported as individual annotated examples, not aggregated into a rate
+    that would overstate how much has actually been checked."""
+    return [
+        {
+            "model": r["model"],
+            "case_id": r["case_id"],
+            "case_text": r["case_text"],
+            "condition": r["condition"],
+            "judgment": r["judgment"],
+            "reasoning_quality": r["reasoning_quality"],
+        }
+        for r in rows
+        if r.get("reasoning_quality")
+    ]
+
+
 def per_model_summary(rows: list[dict]) -> list[dict]:
     by_model, ground_truth = _index(rows)
     summaries = []
@@ -108,6 +129,22 @@ def render_markdown(rows: list[dict]) -> str:
             lines.append(f"**Flip rate** (cases run under both conditions, n={f['n_cases']}): **{f['ac1']:.1%}**")
             if f.get("flipped_case_ids"):
                 lines.append(f"Flipped cases: {', '.join(f['flipped_case_ids'])}")
+        lines.append("")
+
+    notes = reasoning_quality_notes(rows)
+    if notes:
+        lines.append("## Reasoning-quality annotations (qualitative, not a statistic)\n")
+        lines.append(
+            "A judgment can be *correct* while the reasoning behind it is not -- this is logged "
+            "per case as it is reviewed, not aggregated into a rate, since only a small, uneven "
+            "subset of cases has been reviewed this closely so far. `flawed_but_coherent` means a "
+            "real but identifiable error; `fabricated` means invented terminology or rules with no "
+            "actual basis.\n"
+        )
+        lines.append("| model | case | condition | judgment | reasoning quality |")
+        lines.append("|---|---|---|---|---|")
+        for n in notes:
+            lines.append(f"| {n['model']} | {n['case_text']} | {n['condition']} | {n['judgment']} | {n['reasoning_quality']} |")
         lines.append("")
 
     return "\n".join(lines)
