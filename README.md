@@ -52,90 +52,100 @@ This is the check that matters before any real pilot result is reported: if the 
 recover an effect we ourselves injected, nothing it says about real model output would be
 trustworthy either.
 
-## The real pilot (small, partial, and reported as such)
+## The real pilot: two rounds, two models, complete
 
-Ten short claims were built, each relying on a single, checkable false premise (geography, basic
-physics, well-known historical facts, and one about Arabic orthography), with "reject" as the
-correct judgment in every case. Each claim was put to two models under both prompt orderings, in
-separate conversations per ordering to avoid the model carrying over its answer from one condition
-to the other.
+**Round 1** (10 clear-cut false premises: geography, basic physics, well-known historical facts,
+Arabic orthography) and **round 2** (10 deliberately borderline cases: correlation-vs-causation,
+base-rate neglect, a historically-true premise with a non-sequitur conclusion, a valid-but-unsound
+classical syllogism) were each put to two models under both prompt orderings, in separate
+conversations per ordering to avoid the model carrying its answer over from one condition to the
+other. Both rounds are now complete for both models.
 
 ```bash
-make report   # renders reports/pilot_report.md from data/pilot_results.csv
+make report   # renders reports/pilot_report.md from data/pilot_results.csv + data/special_cases.csv
 ```
 
-**Result:** both models rejected every claim under both orderings (AC1 = 1.00, flip rate = 0%).
-`claude-sonnet-4.6` completed all 10 cases under both orderings. `qwen2.5-7b` is **incomplete**
-(9/10 reasoning-first, 6/10 judgment-first -- one case did not return a response locally) --
-reported exactly as that, not padded or assumed.
+**Round 1 result:** both models rejected every claim under both orderings (AC1 = 1.00, flip rate =
+0% for both). Every false premise was a single, clear-cut, checkable fact, so a model that simply
+checks facts correctly rejects all of them regardless of prompt order -- a null result on
+judgments, which is exactly why round 2 exists.
 
-**Read this result for what it is, not more.** A null result here does not mean order has no
-effect in general -- it means these ten claims were too unambiguous to show one. Every false
-premise was a single, clear-cut, checkable fact (not a borderline or contestable case), so a model
-that simply checks facts correctly will reject all of them regardless of prompt order. The
-documented failure mode this project is built to detect is specifically expected to show up on
-*ambiguous* cases, where reasoning can plausibly talk itself into an unwarranted conclusion -- which
-is exactly what the synthetic validation above models (`is_ambiguous`), and exactly what this real
-pilot's case set did not include enough of.
+**Round 2 result -- the first flip in the whole pilot:**
+
+| model | condition | AC1 vs. truth | flip rate |
+|---|---|---|---|
+| claude-sonnet-4.6 | reasoning-first | 1.00 | 0% |
+| claude-sonnet-4.6 | judgment-first | 1.00 | |
+| qwen2.5-7b | reasoning-first | 1.00 | 11.1% |
+| qwen2.5-7b | judgment-first | **0.876** | (1 of 9 paired cases) |
+
+`qwen2.5-7b`'s verdict on the language-evolution-analogy case (does language change by the same
+mechanism as biological natural selection?) flipped from a correct `reject` under reasoning-first to
+an incorrect `accept` under judgment-first -- the judgment itself changed, not just the quality of
+the reasoning behind it, and it came with fabricated support: an invented citation to a
+"linguistic evolution theory" and surface-level analogies (shared vocabulary across languages
+described as equivalent to genetic inheritance) presented as if they were established science.
+`claude-sonnet-4.6` stayed flawless across every case in both rounds and both orderings.
+
+One round-2 case deliberately does not fit the accept/reject scale at all: "all birds fly, the
+ostrich is a bird, therefore the ostrich can fly" is a textbook *valid* syllogism built on a *false*
+premise. `claude-sonnet-4.6` raised the validity/soundness distinction explicitly in both
+orderings (reasoning-first gave a genuinely dual-aspect verdict; judgment-first folded the same
+distinction into a clean "reject" with the nuance as a trailing note). `qwen2.5-7b` never raised the
+distinction in either ordering, and introduced a real factual error in each: misclassifying the
+ostrich's family under reasoning-first, and -- worse -- naming a big cat as an example of a
+flightless bird under judgment-first. These four responses are logged in
+`data/special_cases.csv` and rendered in their own report section rather than forced into the
+binary scale, exactly as agreed before they were collected.
 
 ## A judgment can be correct for the wrong reason
 
-Agreement and flip rate both treat a judgment as one of two outcomes -- correct or not -- which
-misses something the pilot surfaced directly. On the Arabic-orthography case
-(`arabic_no_vowels`), `qwen2.5-7b` reached the *correct* judgment ("reject") under **both**
-orderings, but the reasoning behind it degraded differently depending on order:
+Every one of the 76 regular-case responses across both rounds was annotated by hand as `sound` /
+`flawed_but_coherent` (a real, identifiable error) / `fabricated` (invented terminology or rules
+with no actual basis), logged in the `reasoning_quality` column of `data/pilot_results.csv` and
+tallied per model per round by `make report`:
 
-- **reasoning-first**: conflated *harakat* (short vowel diacritics -- fatha, damma, kasra) with
-  *huruf al-illah* (the actual vowel letters, alif/waw/ya') -- a real, identifiable grammatical
-  error, but at least pointing at genuine concepts.
-- **judgment-first**: invented grammatical terms and rules with no basis in Arabic grammar at all
-  -- not a recognizable error anymore, closer to confabulation.
+| model | round | condition | sound | flawed | fabricated |
+|---|---|---|---|---|---|
+| claude-sonnet-4.6 | round 1 | reasoning-first | 10 | 0 | 0 |
+| claude-sonnet-4.6 | round 1 | judgment-first | 10 | 0 | 0 |
+| claude-sonnet-4.6 | round 2 | reasoning-first | 9 | 0 | 0 |
+| claude-sonnet-4.6 | round 2 | judgment-first | 9 | 0 | 0 |
+| qwen2.5-7b | round 1 | reasoning-first | 5 | 5 | 0 |
+| qwen2.5-7b | round 1 | judgment-first | 4 | 4 | 2 |
+| qwen2.5-7b | round 2 | reasoning-first | 6 | 3 | 0 |
+| qwen2.5-7b | round 2 | judgment-first | 5 | 3 | 1 |
 
-That one case prompted a full, systematic re-read of **every response from both models** -- all 40
-(2 models x 10 cases x 2 orderings) annotated by hand as `sound` / `flawed_but_coherent` (a real,
-identifiable error) / `fabricated` (invented terminology or rules with no basis), logged in the
-`reasoning_quality` column of `data/pilot_results.csv` and tallied by `make report`:
-
-| model | condition | sound | flawed_but_coherent | fabricated |
-|---|---|---|---|---|
-| claude-sonnet-4.6 | reasoning-first | 10 | 0 | 0 |
-| claude-sonnet-4.6 | judgment-first | 10 | 0 | 0 |
-| qwen2.5-7b | reasoning-first | 5 | 5 | 0 |
-| qwen2.5-7b | judgment-first | 4 | 4 | 2 |
-
-**Read this for exactly what it is.** Ten cases per condition is nowhere near enough for a
-significance test, and this is two models, hand-coded by one person. Two things stand out,
+**Read this for exactly what it is.** Single-digit case counts per cell are nowhere near enough for
+a significance test, and this is two models, hand-coded by one person. Three things stand out,
 honestly:
 
-1. **For `claude-sonnet-4.6`, there is nothing to compare.** All 20 responses, under both
-   orderings, were factually sound -- correct dates, correct molecular masses, correct historical
-   attributions, down to details like CO2's molecular mass (44 vs. air's ~29) and the exact year
-   TCP/IP was specified (1974). With zero errors in either condition, this pilot cannot speak to
-   whether order affects this model's reasoning quality at all; capability may simply dominate
-   whatever order effect exists, at least on premises this clear-cut.
-2. **For `qwen2.5-7b`, reasoning-first is not error-free either** -- it affirmed a wrong historical
-   date (the Paris Agreement case) and a wrong geographic fact (the Cairo/equator case) as true,
-   and gave self-contradictory reasoning about gas density in the CO2 case. The directional
-   difference that remains is narrower than the single striking case first suggested: both
-   orderings produce real errors at similar rates, and the distinguishing feature is specifically
-   at the *fabrication* end -- zero fully-invented-terminology responses under reasoning-first,
-   two under judgment-first.
-
-The natural next step is a second round with deliberately borderline cases (see below) -- cases
-clear-cut enough that even `qwen2.5-7b` reliably gets them right would not be able to show an order
-effect for a stronger model either, which is exactly the ceiling this pilot ran into for
-`claude-sonnet-4.6`.
+1. **`claude-sonnet-4.6` was flawless across both rounds, both orderings -- 38/38 regular cases
+   sound** (plus the two valid/sound-aware responses to the special case). This pilot, across both
+   difficulty levels it tried, found no order effect for this model at all; capability dominates
+   whatever effect exists, at least at this task difficulty.
+2. **`qwen2.5-7b` is not simply "worse under judgment-first across the board."** Several round-2
+   cases were handled *better* under judgment-first than reasoning-first (e.g. the fire-stations
+   confound case). The pattern that held up across both rounds is narrower and more specific:
+   fabrication rate specifically rises under judgment-first (0→2 in round 1, 0→1 in round 2, plus
+   the one verdict flip), while plain factual slips happen under both orderings at similar rates.
+3. **The round-1 "reasoning-first is error-free" impression did not survive a full, systematic
+   review** -- it had real errors too (wrong dates, a self-contradictory CO2 explanation) -- and
+   round 2 confirms that reading: reasoning-first is not immune, it is specifically more resistant
+   to full confabulation, which is a narrower and more defensible claim.
 
 ## What's next
 
-- A second round of cases built specifically to be borderline -- a false premise embedded in an
-  otherwise plausible-sounding argument, not a single clear-cut fact -- is the natural next step,
-  since that is where an order effect, if real, should actually appear.
-- Complete the `qwen2.5-7b` run (currently partial) and add further open-weight models for a
-  genuinely cross-model comparison, not just a two-model pilot.
-- A real independent human judgment column (this pilot used a single, deliberately unambiguous
-  ground truth per case) would let the pipeline report agreement with a second human rater as well
-  as with the models.
+- Run further open-weight models on both rounds for a genuinely cross-model comparison rather than
+  a two-model pilot, now that the round-2 case set and the reasoning_quality coding scheme both
+  exist and are validated.
+- A real independent human-rater column (this pilot used a single, deliberately-constructed ground
+  truth per case, chosen by the author) would let the pipeline report agreement with a second human
+  rater as well as with the models -- useful particularly for the subset of round-2 cases that are
+  genuinely debatable rather than clear-cut.
+- Investigate whether the one verdict flip found here replicates: rerun the language-evolution-
+  analogy case on `qwen2.5-7b` multiple times per ordering to see whether it is a reliable order
+  effect or a single stochastic sample.
 
 ## Run it
 
@@ -157,7 +167,8 @@ order_effect_eval/
   report.py      loads data/pilot_results.csv, summarizes per model, honest about gaps
   cli.py         `validate` and `report` subcommands
 data/
-  pilot_results.csv   the real (partial) multi-model pilot data
+  pilot_results.csv   the real multi-model pilot data (round 1 + round 2, both complete)
+  special_cases.csv   responses whose correct answer isn't a clean accept/reject (e.g. valid-but-unsound syllogisms)
 tests/           19 tests across all of the above
 ```
 

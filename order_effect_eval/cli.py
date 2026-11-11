@@ -10,7 +10,7 @@ import sys
 from order_effect_eval.agreement import bootstrap_ac1_ci
 from order_effect_eval.flip import flip_rate
 from order_effect_eval.simulate import generate
-from order_effect_eval.report import load_pilot_csv, render_markdown, write_report
+from order_effect_eval.report import load_pilot_csv, load_special_cases, render_markdown, write_report
 
 
 def run_validate(n_items: int, seed: int) -> None:
@@ -34,12 +34,13 @@ def run_validate(n_items: int, seed: int) -> None:
           "doesn't hold, the pipeline has a bug -- this is the check that it doesn't.")
 
 
-def run_report(csv_path: str, out_path: str) -> None:
+def run_report(csv_path: str, out_path: str, special_cases_path: str | None = None) -> None:
     rows = load_pilot_csv(csv_path)
     if not rows:
         print(f"No rows found in {csv_path}")
         sys.exit(1)
-    markdown = render_markdown(rows)
+    special_cases = load_special_cases(special_cases_path) if special_cases_path else []
+    markdown = render_markdown(rows, special_cases)
     write_report(out_path, markdown)
     print(markdown)
     print(f"\nreport written to {out_path}")
@@ -56,12 +57,13 @@ def main() -> None:
     p_report = sub.add_parser("report", help="render a markdown report from a real pilot CSV")
     p_report.add_argument("csv_path")
     p_report.add_argument("--out", default="reports/pilot_report.md")
+    p_report.add_argument("--special-cases", default="data/special_cases.csv")
 
     args = parser.parse_args()
     if args.command == "validate":
         run_validate(args.n_items, args.seed)
     elif args.command == "report":
-        run_report(args.csv_path, args.out)
+        run_report(args.csv_path, args.out, args.special_cases)
 
 
 if __name__ == "__main__":
