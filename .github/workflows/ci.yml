@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run test suite
+        run: pytest -q
+      - name: Synthetic methodology validation
+        run: python -m order_effect_eval.cli validate --n-items 500
+      - name: Render real pilot report
+        run: python -m order_effect_eval.cli report data/pilot_results.csv
+      - name: Upload pilot report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-report
+          path: reports/pilot_report.md
