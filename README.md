@@ -81,26 +81,50 @@ pilot's case set did not include enough of.
 ## A judgment can be correct for the wrong reason
 
 Agreement and flip rate both treat a judgment as one of two outcomes -- correct or not -- which
-misses something the pilot surfaced directly: on the Arabic-orthography case (`arabic_no_vowels`),
-`qwen2.5-7b` reached the *correct* judgment ("reject") under **both** orderings, but the reasoning
-behind it was not sound either time, and degraded differently depending on order:
+misses something the pilot surfaced directly. On the Arabic-orthography case
+(`arabic_no_vowels`), `qwen2.5-7b` reached the *correct* judgment ("reject") under **both**
+orderings, but the reasoning behind it degraded differently depending on order:
 
 - **reasoning-first**: conflated *harakat* (short vowel diacritics -- fatha, damma, kasra) with
   *huruf al-illah* (the actual vowel letters, alif/waw/ya') -- a real, identifiable grammatical
   error, but at least pointing at genuine concepts.
 - **judgment-first**: invented grammatical terms and rules with no basis in Arabic grammar at all
-  (e.g. treating "fi'l," "ayn," and "hamza" as categories of vowel letter) -- not a recognizable
-  error anymore, closer to confabulation.
+  -- not a recognizable error anymore, closer to confabulation.
 
-This is logged in the report as a qualitative annotation (`reasoning_quality` column in
-`data/pilot_results.csv`: `sound` / `flawed_but_coherent` / `fabricated`), reviewed case by case,
-not aggregated into a rate -- **this is one case, reviewed in this much detail, not a finding**.
-But it reframes the original question usefully: maybe prompt order doesn't flip *judgments* much
-(which is what AC1 and flip rate measure), but it can still degrade the *reasoning quality behind*
-an unchanged judgment -- a real distinction the all-reject pilot above, read only as judgments,
-would have missed entirely. Systematically scoring `reasoning_quality` across every case and model,
-then testing whether flawed or fabricated reasoning predicts a *higher* flip rate on the harder,
-borderline cases below, is the natural next step.
+That one case prompted a full, systematic re-read of **every response from both models** -- all 40
+(2 models x 10 cases x 2 orderings) annotated by hand as `sound` / `flawed_but_coherent` (a real,
+identifiable error) / `fabricated` (invented terminology or rules with no basis), logged in the
+`reasoning_quality` column of `data/pilot_results.csv` and tallied by `make report`:
+
+| model | condition | sound | flawed_but_coherent | fabricated |
+|---|---|---|---|---|
+| claude-sonnet-4.6 | reasoning-first | 10 | 0 | 0 |
+| claude-sonnet-4.6 | judgment-first | 10 | 0 | 0 |
+| qwen2.5-7b | reasoning-first | 5 | 5 | 0 |
+| qwen2.5-7b | judgment-first | 4 | 4 | 2 |
+
+**Read this for exactly what it is.** Ten cases per condition is nowhere near enough for a
+significance test, and this is two models, hand-coded by one person. Two things stand out,
+honestly:
+
+1. **For `claude-sonnet-4.6`, there is nothing to compare.** All 20 responses, under both
+   orderings, were factually sound -- correct dates, correct molecular masses, correct historical
+   attributions, down to details like CO2's molecular mass (44 vs. air's ~29) and the exact year
+   TCP/IP was specified (1974). With zero errors in either condition, this pilot cannot speak to
+   whether order affects this model's reasoning quality at all; capability may simply dominate
+   whatever order effect exists, at least on premises this clear-cut.
+2. **For `qwen2.5-7b`, reasoning-first is not error-free either** -- it affirmed a wrong historical
+   date (the Paris Agreement case) and a wrong geographic fact (the Cairo/equator case) as true,
+   and gave self-contradictory reasoning about gas density in the CO2 case. The directional
+   difference that remains is narrower than the single striking case first suggested: both
+   orderings produce real errors at similar rates, and the distinguishing feature is specifically
+   at the *fabrication* end -- zero fully-invented-terminology responses under reasoning-first,
+   two under judgment-first.
+
+The natural next step is a second round with deliberately borderline cases (see below) -- cases
+clear-cut enough that even `qwen2.5-7b` reliably gets them right would not be able to show an order
+effect for a stronger model either, which is exactly the ceiling this pilot ran into for
+`claude-sonnet-4.6`.
 
 ## What's next
 

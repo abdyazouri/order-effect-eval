@@ -1,4 +1,4 @@
-from order_effect_eval.report import per_model_summary, reasoning_quality_notes
+from order_effect_eval.report import per_model_summary, reasoning_quality_counts, reasoning_quality_notes
 
 
 def _rows(model, reasoning_judgments, judgment_judgments, ground_truth="reject"):
@@ -57,6 +57,21 @@ def test_reasoning_quality_notes_only_includes_annotated_rows():
     assert len(notes) == 1
     assert notes[0]["case_id"] == "c0"
     assert notes[0]["reasoning_quality"] == "flawed_but_coherent"
+
+
+def test_reasoning_quality_counts_tallies_per_model_and_condition():
+    rows = [
+        {"case_id": "c0", "model": "m", "condition": "reasoning_first", "reasoning_quality": "sound"},
+        {"case_id": "c1", "model": "m", "condition": "reasoning_first", "reasoning_quality": "sound"},
+        {"case_id": "c2", "model": "m", "condition": "reasoning_first", "reasoning_quality": "flawed_but_coherent"},
+        {"case_id": "c0", "model": "m", "condition": "judgment_first", "reasoning_quality": "fabricated"},
+        {"case_id": "c1", "model": "m", "condition": "judgment_first", "reasoning_quality": ""},  # unannotated, excluded
+    ]
+    counts = reasoning_quality_counts(rows)
+    assert counts["m"]["reasoning_first"]["sound"] == 2
+    assert counts["m"]["reasoning_first"]["flawed_but_coherent"] == 1
+    assert counts["m"]["judgment_first"]["fabricated"] == 1
+    assert "sound" not in counts["m"]["judgment_first"] or counts["m"]["judgment_first"]["sound"] == 0
 
 
 def test_two_models_kept_separate():

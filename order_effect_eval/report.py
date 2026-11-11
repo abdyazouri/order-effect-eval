@@ -57,6 +57,19 @@ def reasoning_quality_notes(rows: list[dict]) -> list[dict]:
     ]
 
 
+def reasoning_quality_counts(rows: list[dict]) -> dict:
+    """model -> condition -> {quality_label: count}, over only the rows that
+    have been annotated. This is a plain count, not a statistical test -- at
+    typical pilot sample sizes (tens of cases) a formal test would overstate
+    the confidence this count can actually support."""
+    counts: dict = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+    for r in rows:
+        q = r.get("reasoning_quality")
+        if q:
+            counts[r["model"]][r["condition"]][q] += 1
+    return counts
+
+
 def per_model_summary(rows: list[dict]) -> list[dict]:
     by_model, ground_truth = _index(rows)
     summaries = []
@@ -133,14 +146,30 @@ def render_markdown(rows: list[dict]) -> str:
 
     notes = reasoning_quality_notes(rows)
     if notes:
-        lines.append("## Reasoning-quality annotations (qualitative, not a statistic)\n")
+        lines.append("## Reasoning-quality annotations\n")
         lines.append(
-            "A judgment can be *correct* while the reasoning behind it is not -- this is logged "
-            "per case as it is reviewed, not aggregated into a rate, since only a small, uneven "
-            "subset of cases has been reviewed this closely so far. `flawed_but_coherent` means a "
-            "real but identifiable error; `fabricated` means invented terminology or rules with no "
-            "actual basis.\n"
+            "A judgment can be *correct* while the reasoning behind it is not. Each case is "
+            "annotated by hand as `sound` / `flawed_but_coherent` (a real, identifiable error) / "
+            "`fabricated` (invented terminology or rules with no actual basis). **These are plain "
+            "counts, not a statistical test** -- at this sample size (tens of cases, one human "
+            "annotator), a formal significance test would overstate the confidence these numbers "
+            "can support. Read the direction, not the precision.\n"
         )
+
+        counts = reasoning_quality_counts(rows)
+        for model, by_condition in counts.items():
+            lines.append(f"**{model}**\n")
+            lines.append("| condition | sound | flawed_but_coherent | fabricated | n annotated |")
+            lines.append("|---|---|---|---|---|")
+            for condition, cq in by_condition.items():
+                total = sum(cq.values())
+                lines.append(
+                    f"| {condition} | {cq.get('sound', 0)} | {cq.get('flawed_but_coherent', 0)} "
+                    f"| {cq.get('fabricated', 0)} | {total} |"
+                )
+            lines.append("")
+
+        lines.append("**All annotated cases:**\n")
         lines.append("| model | case | condition | judgment | reasoning quality |")
         lines.append("|---|---|---|---|---|")
         for n in notes:
