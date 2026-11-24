@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Order-effect evaluation of LLM judgments"
+authors:
+  - family-names: Alyazouri
+    given-names: Abdalrahman
+    orcid: "https://orcid.org/0009-0002-5673-5535"
+version: 1.0.0
+date-released: 2026-11-24
+license: MIT
+repository-code: "https://github.com/abdyazouri/order-effect-eval"
+keywords:
+  - LLM-as-judge
+  - order effects
+  - evaluation
+  - inter-rater agreement
